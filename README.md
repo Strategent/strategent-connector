@@ -40,6 +40,13 @@ Descriptions are in `src/copy.ts`, verbatim from the brief. All brand copy lives
    you and Nico actually hold. Host: you alone. Then create an API key (Settings, Developer, API keys) and share it
    through 1Password only.
    Menu names are from memory; Cal.com moves things around.
+
+   **Already done for the Strategent account (26 Oct 2026, through the Cal.com connector):** event type
+   `AI Readiness Audit` exists with id **7650820**, slug `audit`, 30 minutes, Google Meet, 15 minute buffer after,
+   4 hour minimum notice, max 3 per day, and all seven booking questions as optional text fields. It uses a new
+   schedule, "Audit calls" (id 2556615): Mon, Tue, Thu, Fri, 10am to 4pm Pacific. Remaining by hand: create the API
+   key, and rename the account username from `strategent-eykb5a` (the API cannot change it, so do it in Cal.com
+   under Settings, My account, Profile). The public page is `cal.com/<username>/audit`.
 2. **First live check.** `CAL_API_KEY=... npm run cal:setup` confirms the key and lists event types with their ids.
    Set `CAL_EVENT_TYPE_ID` and `BOOKING_PAGE_URL` (your public booking page, for example `cal.com/yourname/audit`) and
    run it again. Then:
@@ -123,6 +130,8 @@ See `.env.example`. Required: `SIGNING_SECRET`, `CAL_API_KEY`, `CAL_EVENT_TYPE_I
   `https://cal.com/reschedule/{uid}` and `https://cal.com/booking/{uid}?cancel=true`, which are patterns I could not
   confirm from Cal.com's docs. The `--book` step prints them so you can click. Override with
   `RESCHEDULE_URL_TEMPLATE` / `CANCEL_URL_TEMPLATE` if they fail. The reschedule link is in the confirmation the user sees.
+- **Confirmed live:** availability for event 7650820 returns `{ "<date>": [{ "start": "<ISO with offset>" }] }`, which is
+  what `src/cal.ts` parses, and Wednesday is correctly empty. Only availability was checked, not booking.
 - **The live booking call.** Request and response shapes follow the OpenAPI spec. Expect small adjustments in
   `src/cal.ts` if Cal.com rejects a field. There was also a reported GitHub issue about a `title` requirement on
   bookings that the spec does not show.
