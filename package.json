@@ -1,0 +1,29 @@
+{
+  "name": "strategent-connector",
+  "version": "0.1.0",
+  "description": "Strategent AI Readiness Audit connector (remote MCP server) for Meta Muse, Claude and ChatGPT",
+  "scripts": {
+    "dev": "tsx watch src/node.ts",
+    "start": "tsx src/node.ts",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "cal:setup": "tsx scripts/cal-setup.ts"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "@hono/node-server": "^2.1.5",
+    "@modelcontextprotocol/sdk": "^1.32.2",
+    "hono": "^4.13.14",
+    "zod": "^4.6.7"
+  },
+  "devDependencies": {
+    "@types/node": "^26.6.5",
+    "tsx": "^4.23.15",
+    "typescript": "^7.0.2",
+    "vitest": "^5.0.5"
+  },
+  "private": true,
+  "type": "module"
+}
