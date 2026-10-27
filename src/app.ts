@@ -5,6 +5,7 @@ import { cors } from 'hono/cors';
 import { createCalClient } from './cal.js';
 import { createCalWebhookRoutes } from './calWebhook.js';
 import { loadConfig, missingConfig, type Config } from './config.js';
+import { docsPage } from './docs.js';
 import { createMcpServer } from './mcp.js';
 import { createNotifier, type Notifier } from './notify.js';
 import { authenticate, createOAuthRoutes, unauthorizedResponse } from './oauth.js';
@@ -24,8 +25,9 @@ export function createApp(deps: AppDeps): Hono {
   const { config } = deps;
   const app = new Hono();
 
-  app.get('/', (c) => c.text('Strategent AI Readiness Audit connector. MCP endpoint: /mcp'));
+  app.get('/', (c) => c.text('Strategent AI Readiness Audit connector. MCP endpoint: /mcp. Documentation: /docs'));
   app.get('/health', (c) => c.json({ ok: true }));
+  app.get('/docs', (c) => c.html(docsPage(config)));
   app.get('/privacy', (c) => c.redirect(config.privacyUrl, 302));
   app.get('/terms', (c) => c.redirect(config.termsUrl, 302));
 
