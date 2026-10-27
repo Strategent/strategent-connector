@@ -85,9 +85,10 @@ set up). Without this the lead keeps showing the old time.
 1. Generate a secret and keep it in 1Password (for example `openssl rand -base64 48`, or in PowerShell
    `$b = New-Object byte[] 48; (New-Object System.Security.Cryptography.RNGCryptoServiceProvider).GetBytes($b); [Convert]::ToBase64String($b) | Set-Clipboard`).
 2. Add it to the host as `CAL_WEBHOOK_SECRET` (Production, Sensitive) and redeploy.
-3. In Cal.com, open the **AI Readiness Audit** event type, then Webhooks, and create a webhook:
+3. In Cal.com, go to Settings, Developer, Webhooks (`/settings/developer/webhooks`) and create a webhook:
    subscriber URL `https://connect.strategent.app/webhooks/cal`, the same secret, and the triggers **Booking
-   rescheduled** and **Booking cancelled** only. (Menu names are from memory.)
+   rescheduled** and **Booking cancelled** only. A webhook there covers all your booking links, which is fine because
+   the connector ignores bookings it did not create; Cal.com can also attach one to a single event type.
 4. Reschedule and cancel a test booking, and check the lead row and the email. Failed deliveries show in the Cal.com
    webhook settings, and the connector logs one `[cal-webhook]` line per delivery.
 
@@ -173,10 +174,12 @@ See `.env.example`. Required: `SIGNING_SECRET`, `CAL_API_KEY`, `CAL_EVENT_TYPE_I
 - **Muse specifics:** redirect domain, whether it needs different consent wording, tool-call timeouts, how it presents
   `isError` results. Set `ALLOWED_REDIRECT_HOSTS` once the domain is known.
 - **Cancellations and reschedules** are synced back by the Cal.com webhook (see "Keep reschedules and cancellations in
-  sync"). The handler is tested against the payload shapes in Cal.com's docs, but not yet against a live delivery.
-  Unverified: whether Cal.com also sends `BOOKING_CANCELLED` for the old booking when someone reschedules. If it does,
-  the handler still ends in the right state (a later reschedule restores the request), but the team would get one
-  spurious "cancelled" email.
+  sync") and were verified live on 27 Oct 2026 with a real booking: Cal.com's signed test ping was accepted, a
+  reschedule moved the lead to the new booking uid, time and links, and a cancel marked it `cancelled`. All three alert
+  emails (new call, rescheduled, cancelled) reached the inbox. On a reschedule Cal.com sends only
+  `BOOKING_RESCHEDULED`, not a `BOOKING_CANCELLED` for the old booking, so there is no duplicate alert. The handler
+  would still end in the right state if that ever changed (a later reschedule restores the request), but the team would
+  then get one spurious "cancelled" email.
 - **Cloudflare Workers** is untested. Vercel and plain Node are the supported targets.
 
 ## Open copy decisions for Ruchi
