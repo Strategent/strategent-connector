@@ -59,7 +59,10 @@ Descriptions are in `src/copy.ts`, verbatim from the brief. All brand copy lives
 3. **Supabase.** Run `supabase/schema.sql` in the SQL editor. Copy the project URL and service-role key.
 4. **Slack and email.** Create `#leads` and add an incoming webhook. Create a Resend key and verify the sending domain.
 5. **Deploy.** Vercel: import the repo, set the variables from `.env.example`, add the domain `connect.strategent.app`.
-   `vercel.json` routes everything to `api/index.ts`. Any Node host also works: `npm start` serves on `PORT`.
+   `vercel.json` routes everything to `api/index.ts` and sets `"framework": null` (the "Other" preset). Without that,
+   Vercel auto-detects Hono and the build fails with `TS2688: Cannot find type definition file for 'node'`. The same
+   error line still prints in the build log with the preset set to Other, but it does not fail the build.
+   Any Node host also works: `npm start` serves on `PORT`.
    Generate `SIGNING_SECRET` with `openssl rand -base64 48`.
 6. **Smoke test.** `curl https://connect.strategent.app/health`, then open `/.well-known/oauth-authorization-server`.
    An unauthenticated `POST /mcp` must return 401 with a `WWW-Authenticate` header.
