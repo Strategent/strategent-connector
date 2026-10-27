@@ -29,6 +29,7 @@ create table if not exists audit_requests (
 create index if not exists audit_requests_email_idx on audit_requests (lower(email));
 create index if not exists audit_requests_created_idx on audit_requests (created_at desc);
 create index if not exists audit_requests_owner_idx on audit_requests (owner_sub, lower(email));
+create index if not exists audit_requests_booking_uid_idx on audit_requests (booking_uid);  -- Cal.com webhook lookups
 
 -- A second booking for the same person and time cannot be written, even if two requests race.
 create unique index if not exists audit_requests_one_booking_per_slot

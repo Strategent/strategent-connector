@@ -12,6 +12,8 @@ export interface Config {
   cancelUrlTemplate: string;
   /** Where someone can book a time themselves, shown in written-audit replies. */
   bookingPageUrl: string;
+  /** Shared secret Cal.com signs webhook deliveries with. Blank turns the webhook endpoint off. */
+  calWebhookSecret: string;
   supabaseUrl: string;
   supabaseServiceKey: string;
   slackWebhookUrl: string;
@@ -67,6 +69,7 @@ export function loadConfig(env: Env): Config {
     rescheduleUrlTemplate: env.RESCHEDULE_URL_TEMPLATE ?? 'https://cal.com/reschedule/{uid}',
     cancelUrlTemplate: env.CANCEL_URL_TEMPLATE ?? 'https://cal.com/booking/{uid}?cancel=true',
     bookingPageUrl: (env.BOOKING_PAGE_URL ?? '').replace(/^https?:\/\//, '').replace(/\/+$/, ''),
+    calWebhookSecret: env.CAL_WEBHOOK_SECRET ?? '',
     supabaseUrl: (env.SUPABASE_URL ?? '').replace(/\/+$/, ''),
     supabaseServiceKey: env.SUPABASE_SERVICE_KEY ?? '',
     slackWebhookUrl: env.SLACK_WEBHOOK_URL ?? '',

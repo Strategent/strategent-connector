@@ -534,6 +534,9 @@ export function createTools(deps: ToolDeps) {
       };
     }
     const lines = rows.slice(0, 5).map((r) => {
+      if (r.type === 'call' && r.status === 'cancelled') {
+        return 'Audit call: this booking was cancelled. Next step: offer a new time with check_audit_availability if they still want a call.';
+      }
       if (r.type === 'call' && r.slot_start) {
         const m = confirmationMoment(new Date(r.slot_start), r.timezone ?? 'America/Los_Angeles');
         const past = new Date(r.slot_start).getTime() < now().getTime();

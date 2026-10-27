@@ -30,6 +30,7 @@ Descriptions are in `src/copy.ts`, verbatim from the brief. All brand copy lives
 - `GET /.well-known/oauth-authorization-server`, `GET /.well-known/oauth-protected-resource`
 - `POST /oauth/register` (dynamic client registration), `GET|POST /oauth/authorize`, `POST /oauth/token`
 - `GET /privacy`, `GET /terms` redirect to strategent.app
+- `POST /webhooks/cal` Cal.com webhook receiver for reschedules and cancellations (signed; off until `CAL_WEBHOOK_SECRET` is set)
 - `GET /health`
 
 ## Go live
@@ -74,6 +75,26 @@ Descriptions are in `src/copy.ts`, verbatim from the brief. All brand copy lives
 
 Optional: reminder emails (24 hours and 1 hour before) are a Cal.com setting (Workflows). Whether that needs a paid
 plan is not verified.
+
+### Keep reschedules and cancellations in sync
+
+When someone reschedules or cancels through the Cal.com links, Cal.com tells the connector, which updates the lead in
+Supabase (new time, booking uid and links, or status `cancelled`) and emails the team (and posts to Slack when that is
+set up). Without this the lead keeps showing the old time.
+
+1. Generate a secret and keep it in 1Password (for example `openssl rand -base64 48`, or in PowerShell
+   `$b = New-Object byte[] 48; (New-Object System.Security.Cryptography.RNGCryptoServiceProvider).GetBytes($b); [Convert]::ToBase64String($b) | Set-Clipboard`).
+2. Add it to the host as `CAL_WEBHOOK_SECRET` (Production, Sensitive) and redeploy.
+3. In Cal.com, open the **AI Readiness Audit** event type, then Webhooks, and create a webhook:
+   subscriber URL `https://connect.strategent.app/webhooks/cal`, the same secret, and the triggers **Booking
+   rescheduled** and **Booking cancelled** only. (Menu names are from memory.)
+4. Reschedule and cancel a test booking, and check the lead row and the email. Failed deliveries show in the Cal.com
+   webhook settings, and the connector logs one `[cal-webhook]` line per delivery.
+
+Cal.com signs each delivery with HMAC-SHA256 of the raw body in the `x-cal-signature-256` header. The connector rejects
+anything without a valid signature, ignores bookings it did not create, and treats a repeated delivery as already done.
+If a change cannot be saved (for example it would clash with another booked call), the team gets an email to fix the
+lead by hand.
 
 ## Configuration
 
@@ -151,8 +172,11 @@ See `.env.example`. Required: `SIGNING_SECRET`, `CAL_API_KEY`, `CAL_EVENT_TYPE_I
   Slack alert says to check the calendar for a duplicate.
 - **Muse specifics:** redirect domain, whether it needs different consent wording, tool-call timeouts, how it presents
   `isError` results. Set `ALLOWED_REDIRECT_HOSTS` once the domain is known.
-- **Cancellations and reschedules** made in Cal.com are not synced back, so `get_audit_request_status` can show a
-  cancelled call as booked. Cal.com has webhook endpoints for event types; wire them when volume justifies it.
+- **Cancellations and reschedules** are synced back by the Cal.com webhook (see "Keep reschedules and cancellations in
+  sync"). The handler is tested against the payload shapes in Cal.com's docs, but not yet against a live delivery.
+  Unverified: whether Cal.com also sends `BOOKING_CANCELLED` for the old booking when someone reschedules. If it does,
+  the handler still ends in the right state (a later reschedule restores the request), but the team would get one
+  spurious "cancelled" email.
 - **Cloudflare Workers** is untested. Vercel and plain Node are the supported targets.
 
 ## Open copy decisions for Ruchi
