@@ -37,8 +37,20 @@ export interface ToolLog {
   latency_ms: number;
 }
 
+/** The fields a Cal.com reschedule or cancellation can change on an existing request. */
+export type RequestPatch = Partial<
+  Pick<AuditRequest, 'status' | 'slot_start' | 'booking_uid' | 'meet_link' | 'reschedule_url' | 'cancel_url'>
+>;
+
+/** Cal.com booking uids are short URL-safe strings. Anything else is never looked up. */
+export const isBookingUid = (uid: string) => /^[A-Za-z0-9_-]{6,64}$/.test(uid);
+
 export interface Store {
   insertRequest(row: Omit<AuditRequest, 'id' | 'created_at'>): Promise<AuditRequest>;
+  /** The request that holds this Cal.com booking uid, whatever its status. */
+  findByBookingUid(uid: string): Promise<AuditRequest | null>;
+  /** Applies a patch and returns the updated row, or null if the id no longer exists. */
+  updateRequest(id: string, patch: RequestPatch): Promise<AuditRequest | null>;
   /** Upcoming booked call for this email, if any. */
   findActiveCall(email: string, now: Date): Promise<AuditRequest | null>;
   /** Open written or pending-call requests for this email. */
@@ -71,6 +83,25 @@ export class MemoryStore implements Store {
     const full: AuditRequest = { ...row, id: randomId(9), created_at: this.now().toISOString() };
     this.rows.push(full);
     return full;
+  }
+  // Like the database, these hand back copies, so a caller never sees a row change underneath it.
+  async findByBookingUid(uid: string) {
+    const row = this.rows.find((r) => r.booking_uid === uid);
+    return row ? { ...row } : null;
+  }
+  async updateRequest(id: string, patch: RequestPatch) {
+    const i = this.rows.findIndex((r) => r.id === id);
+    if (i < 0) return null;
+    const next = { ...this.rows[i]!, ...patch };
+    // Same rule as the unique index in schema.sql: one booked call per person and time.
+    const clash = this.rows.find(
+      (r, j) =>
+        j !== i && next.type === 'call' && next.status === 'booked' && r.type === 'call' && r.status === 'booked' &&
+        norm(r.email) === norm(next.email) && r.slot_start === next.slot_start,
+    );
+    if (clash) throw new Error('duplicate booking');
+    this.rows[i] = next;
+    return { ...next };
   }
   async findActiveCall(email: string, now: Date) {
     return (
@@ -148,6 +179,23 @@ export class SupabaseStore implements Store {
     });
     if (!res.ok) throw new Error(`Supabase insert failed (${res.status})`);
     return ((await res.json()) as AuditRequest[])[0]!;
+  }
+
+  async findByBookingUid(uid: string) {
+    if (!isBookingUid(uid)) return null;
+    const q = new URLSearchParams({ booking_uid: `eq.${uid}`, limit: '1' });
+    return (await this.rows(`audit_requests?${q}`))[0] ?? null;
+  }
+
+  async updateRequest(id: string, patch: RequestPatch) {
+    const q = new URLSearchParams({ id: `eq.${id}` });
+    const res = await this.rest(`audit_requests?${q}`, {
+      method: 'PATCH',
+      headers: { Prefer: 'return=representation' },
+      body: JSON.stringify(patch),
+    });
+    if (!res.ok) throw new Error(`Supabase update failed (${res.status})`);
+    return ((await res.json()) as AuditRequest[])[0] ?? null;
   }
 
   async findActiveCall(email: string, now: Date) {

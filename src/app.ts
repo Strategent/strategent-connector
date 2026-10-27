@@ -3,6 +3,7 @@ import { Hono } from 'hono';
 import { bodyLimit } from 'hono/body-limit';
 import { cors } from 'hono/cors';
 import { createCalClient } from './cal.js';
+import { createCalWebhookRoutes } from './calWebhook.js';
 import { loadConfig, missingConfig, type Config } from './config.js';
 import { createMcpServer } from './mcp.js';
 import { createNotifier, type Notifier } from './notify.js';
@@ -29,6 +30,7 @@ export function createApp(deps: AppDeps): Hono {
   app.get('/terms', (c) => c.redirect(config.termsUrl, 302));
 
   app.route('/', createOAuthRoutes({ config, store: deps.store, now }));
+  app.route('/', createCalWebhookRoutes({ config, store: deps.store, notifier: deps.notifier }));
 
   app.use('/mcp', cors({ origin: '*', allowHeaders: ['Authorization', 'Content-Type', 'Accept', 'Mcp-Session-Id', 'Mcp-Protocol-Version'], exposeHeaders: ['WWW-Authenticate', 'Mcp-Session-Id'] }));
   app.use('/mcp', bodyLimit({ maxSize: 64 * 1024, onError: (c) => c.json({ error: 'payload_too_large' }, 413) }));
