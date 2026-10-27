@@ -33,6 +33,7 @@ Descriptions are in `src/copy.ts`, verbatim from the brief. All brand copy lives
   and `/terms-of-service`). The sign-in page and the OAuth metadata link to the same pages.
 - `POST /webhooks/cal` Cal.com webhook receiver for reschedules and cancellations (signed; off until `CAL_WEBHOOK_SECRET` is set)
 - `GET /health`
+- `GET /docs`: public documentation page (endpoint, sign-in, tools, limits). Give this URL to Muse as the API or MCP documentation link.
 
 ## Go live
 
