@@ -18,8 +18,19 @@ describe('discovery', () => {
     const h = makeHarness();
     const p = await h.app.request('/privacy');
     expect(p.status).toBe(302);
-    expect(p.headers.get('location')).toBe('https://strategent.app/privacy');
-    expect((await h.app.request('/terms')).headers.get('location')).toBe('https://strategent.app/terms');
+    expect(p.headers.get('location')).toBe('https://www.strategent.app/privacy-policy');
+    expect((await h.app.request('/terms')).headers.get('location')).toBe('https://www.strategent.app/terms-of-service');
+  });
+  it('links the same pages from the sign-in page and the OAuth metadata', async () => {
+    const h = makeHarness();
+    const redirect = 'https://muse.example.test/callback';
+    const reg = (await (await h.app.request('/oauth/register', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ redirect_uris: [redirect] }) })).json()) as any;
+    const q = new URLSearchParams({ response_type: 'code', client_id: reg.client_id, redirect_uri: redirect, code_challenge: await sha256b64url('v'.repeat(64)), code_challenge_method: 'S256' });
+    const html = await (await h.app.request(`/oauth/authorize?${q}`)).text();
+    expect(html).toContain('href="https://www.strategent.app/privacy-policy"');
+    expect(html).toContain('href="https://www.strategent.app/terms-of-service"');
+    const as = (await (await h.app.request('/.well-known/oauth-authorization-server')).json()) as any;
+    expect(as.service_documentation).toBe('https://www.strategent.app/privacy-policy');
   });
 });
 

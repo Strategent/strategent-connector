@@ -29,7 +29,8 @@ Descriptions are in `src/copy.ts`, verbatim from the brief. All brand copy lives
 - `POST /mcp` streamable HTTP, stateless, JSON responses
 - `GET /.well-known/oauth-authorization-server`, `GET /.well-known/oauth-protected-resource`
 - `POST /oauth/register` (dynamic client registration), `GET|POST /oauth/authorize`, `POST /oauth/token`
-- `GET /privacy`, `GET /terms` redirect to strategent.app
+- `GET /privacy`, `GET /terms` redirect to the privacy policy and terms of service on strategent.app (`/privacy-policy`
+  and `/terms-of-service`). The sign-in page and the OAuth metadata link to the same pages.
 - `POST /webhooks/cal` Cal.com webhook receiver for reschedules and cancellations (signed; off until `CAL_WEBHOOK_SECRET` is set)
 - `GET /health`
 
