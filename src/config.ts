@@ -77,8 +77,8 @@ export function loadConfig(env: Env): Config {
     notifyEmailTo: env.NOTIFY_EMAIL_TO ?? 'info@strategent.app',
     notifyEmailFrom: env.NOTIFY_EMAIL_FROM ?? 'Strategent Connector <connector@strategent.app>',
     sendRequesterAck: env.SEND_REQUESTER_ACK === 'true',
-    privacyUrl: env.PRIVACY_URL ?? 'https://strategent.app/privacy',
-    termsUrl: env.TERMS_URL ?? 'https://strategent.app/terms',
+    privacyUrl: env.PRIVACY_URL ?? 'https://www.strategent.app/privacy-policy',
+    termsUrl: env.TERMS_URL ?? 'https://www.strategent.app/terms-of-service',
     hostIntro: env.HOST_INTRO ?? 'Ruchi Singh, co-founder of Strategent',
     allowedRedirectHosts: (env.ALLOWED_REDIRECT_HOSTS ?? '')
       .split(',')
