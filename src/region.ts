@@ -16,6 +16,13 @@ const LA_OTHER = [
   'los angeles', 'long beach', 'pasadena', 'glendale', 'burbank', 'inglewood', 'compton', 'downey',
   'santa clarita', 'van nuys', 'sherman oaks', 'encino', 'hollywood', 'downtown la', 'dtla', 'orange county',
   'irvine', 'anaheim', 'santa ana', 'huntington beach', 'costa mesa', 'newport beach',
+  // San Fernando Valley and the rest of LA County.
+  'san fernando valley', 'woodland hills', 'west hills', 'canoga park', 'winnetka', 'reseda', 'tarzana',
+  'northridge', 'chatsworth', 'granada hills', 'porter ranch', 'north hills', 'panorama city', 'pacoima',
+  'sylmar', 'studio city', 'valley village', 'north hollywood', 'toluca lake', 'calabasas', 'agoura hills',
+  'westlake village', 'topanga', 'silver lake', 'echo park', 'koreatown', 'eagle rock', 'pomona',
+  'west covina', 'el monte', 'alhambra', 'monterey park', 'whittier', 'norwalk', 'lakewood', 'bellflower',
+  'south gate',
 ];
 
 const SOUTH_BAY_ZIPS = new Set([
