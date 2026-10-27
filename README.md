@@ -9,9 +9,9 @@ Muse  ->  POST /mcp  (OAuth bearer)  ->  4 tools  ->  Cal.com API    (availabili
                                                   ->  Slack + email  (lead alert)
 ```
 
-Status: code complete and tested against fakes and a mocked Cal.com (130 tests). **Not yet run against live
-Cal.com, Supabase, Slack or Muse.** The Cal.com request shapes come from Cal.com's published OpenAPI spec, not from
-a live call. Step 2 below is the first live test.
+Status: code complete and tested against fakes and a mocked Cal.com (130 tests). **The Cal.com client has been run
+live** (27 Oct 2026): `npm run cal:setup` and one real test booking, made through the same `src/cal.ts` client the
+server uses. **Not yet run live:** the deployed server, OAuth, Supabase, Slack, email, or Muse.
 
 ## Tools
 
@@ -44,9 +44,9 @@ Descriptions are in `src/copy.ts`, verbatim from the brief. All brand copy lives
    **Already done for the Strategent account (26 Oct 2026, through the Cal.com connector):** event type
    `AI Readiness Audit` exists with id **7650820**, slug `audit`, 30 minutes, Google Meet, 15 minute buffer after,
    4 hour minimum notice, max 3 per day, and all seven booking questions as optional text fields. It uses a new
-   schedule, "Audit calls" (id 2556615): Mon, Tue, Thu, Fri, 10am to 4pm Pacific. Remaining by hand: create the API
-   key, and rename the account username from `strategent-eykb5a` (the API cannot change it, so do it in Cal.com
-   under Settings, My account, Profile). The public page is `cal.com/<username>/audit`.
+   schedule, "Audit calls" (id 2556615): Mon, Tue, Thu, Fri, 10am to 4pm Pacific. The account username was renamed
+   from `strategent-eykb5a` to `strategent` on 27 Oct 2026, so the public page is `cal.com/strategent/audit` (the old
+   URL now returns 404). The API key exists; it still needs to go into the host's environment variables.
 2. **First live check.** `CAL_API_KEY=... npm run cal:setup` confirms the key and lists event types with their ids.
    Set `CAL_EVENT_TYPE_ID` and `BOOKING_PAGE_URL` (your public booking page, for example `cal.com/yourname/audit`) and
    run it again. Then:
@@ -124,19 +124,24 @@ See `.env.example`. Required: `SIGNING_SECRET`, `CAL_API_KEY`, `CAL_EVENT_TYPE_I
 - **Written-audit replies link to `BOOKING_PAGE_URL`.** The brief's copy pointed at a Calendly page, so that line of
   copy changed. Ruchi should approve the new link.
 
-## Not verified yet
+## Verification status
 
-- **Reschedule and cancel links.** Cal.com's API does not return them. They are built from the booking uid using
-  `https://cal.com/reschedule/{uid}` and `https://cal.com/booking/{uid}?cancel=true`, which are patterns I could not
-  confirm from Cal.com's docs. The `--book` step prints them so you can click. Override with
-  `RESCHEDULE_URL_TEMPLATE` / `CANCEL_URL_TEMPLATE` if they fail. The reschedule link is in the confirmation the user sees.
-- **Confirmed live:** availability for event 7650820 returns `{ "<date>": [{ "start": "<ISO with offset>" }] }`, which is
-  what `src/cal.ts` parses, and Wednesday is correctly empty. Only availability was checked, not booking.
-- **The live booking call.** Request and response shapes follow the OpenAPI spec. Expect small adjustments in
-  `src/cal.ts` if Cal.com rejects a field. There was also a reported GitHub issue about a `title` requirement on
-  bookings that the spec does not show.
-- **What the Cal.com plan includes.** I did not confirm that API keys, Google Meet, or the limits above are available on
-  your plan.
+- **Confirmed live (27 Oct 2026):**
+  - Availability for event 7650820 returns `{ "<date>": [{ "start": "<ISO with offset>" }] }`, which is what
+    `src/cal.ts` parses. Wednesday is correctly empty.
+  - `npm run cal:setup` signs in, lists the event types, and finds all seven booking questions present, so
+    `--create-fields` had nothing to add.
+  - One real booking through `createBooking` succeeded: a Google Meet link was returned, the confirmation email arrived
+    with the right event, time and description, and every booking answer was stored. The test booking has been cancelled.
+  - The reschedule and cancel links built from the booking uid (`https://cal.com/reschedule/{uid}` and
+    `https://cal.com/booking/{uid}?cancel=true`) both work, so `RESCHEDULE_URL_TEMPLATE` and `CANCEL_URL_TEMPLATE` need
+    no override.
+  - The Cal.com account has API keys, Google Meet, the 15 minute buffer and the 4 hour minimum notice. The max 3 per
+    day limit was set but not exercised.
+- **A taken slot** has not been exercised live. The 409 handling and the availability re-check in `src/cal.ts` follow
+  the assumptions above, not an observed Cal.com error.
+- **Running the setup script in a sandbox with an outbound proxy.** Node's built-in fetch ignores `HTTPS_PROXY`. Run with
+  `NODE_USE_ENV_PROXY=1` (Node 22.21 or later). Not needed on a normal machine or on Vercel.
 - **Event types that require confirmation** return a `pending` booking. It is treated as booked, but the host would
   still need to confirm. Leave "requires confirmation" off for this event.
 - **A booking request that times out** may or may not have gone through. The lead is saved as `call_pending` and the
