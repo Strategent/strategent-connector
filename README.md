@@ -44,9 +44,9 @@ Descriptions are in `src/copy.ts`, verbatim from the brief. All brand copy lives
    **Already done for the Strategent account (26 Oct 2026, through the Cal.com connector):** event type
    `AI Readiness Audit` exists with id **7650820**, slug `audit`, 30 minutes, Google Meet, 15 minute buffer after,
    4 hour minimum notice, max 3 per day, and all seven booking questions as optional text fields. It uses a new
-   schedule, "Audit calls" (id 2556615): Mon, Tue, Thu, Fri, 10am to 4pm Pacific. Remaining by hand: create the API
-   key, and rename the account username from `strategent-eykb5a` (the API cannot change it, so do it in Cal.com
-   under Settings, My account, Profile). The public page is `cal.com/<username>/audit`.
+   schedule, "Audit calls" (id 2556615): Mon, Tue, Thu, Fri, 10am to 4pm Pacific. The account username was renamed
+   from `strategent-eykb5a` to `strategent` on 27 Oct 2026, so the public page is `cal.com/strategent/audit` (the old
+   URL now returns 404). The API key exists; it still needs to go into the host's environment variables.
 2. **First live check.** `CAL_API_KEY=... npm run cal:setup` confirms the key and lists event types with their ids.
    Set `CAL_EVENT_TYPE_ID` and `BOOKING_PAGE_URL` (your public booking page, for example `cal.com/yourname/audit`) and
    run it again. Then:
