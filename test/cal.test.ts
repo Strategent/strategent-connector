@@ -1,4 +1,4 @@
-import { describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { createCalClient, errorText, fillTemplate } from '../src/cal.js';
 import { SchedulerConflictError, SchedulerUnavailableError } from '../src/scheduler.js';
 import { testConfig } from './helpers.js';
@@ -105,6 +105,17 @@ describe('availableTimes', () => {
 });
 
 describe('createBooking', () => {
+  // `input.start` is a fixed date, and createBooking re-checks availability against the real clock when a booking
+  // is refused. Pin Date so the slot stays in the future; without this these tests started failing once the real
+  // clock passed the fixed slot.
+  beforeEach(() => {
+    vi.useFakeTimers({ toFake: ['Date'] });
+    vi.setSystemTime(new Date('2026-10-26T20:00:00Z'));
+  });
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
   it('posts the documented body with the pinned booking version', async () => {
     const calls: { url: string; init: RequestInit }[] = [];
     const client = createCalClient(config, (async (url: string, init: RequestInit) => {
