@@ -32,6 +32,7 @@ Descriptions are in `src/copy.ts`, verbatim from the brief. All brand copy lives
 - `GET /privacy`, `GET /terms` redirect to the privacy policy and terms of service on strategent.app (`/privacy-policy`
   and `/terms-of-service`). The sign-in page and the OAuth metadata link to the same pages.
 - `POST /webhooks/cal` Cal.com webhook receiver for reschedules and cancellations (signed; off until `CAL_WEBHOOK_SECRET` is set)
+- `GET /cron/retention` daily retention cleanup (Vercel Cron; needs `CRON_SECRET`, see "Retention cleanup")
 - `GET /health`
 - `GET /docs`: public documentation page (endpoint, sign-in, tools, limits). Give this URL to Muse as the API or MCP documentation link.
 
@@ -184,6 +185,24 @@ See `.env.example`. Required: `SIGNING_SECRET`, `CAL_API_KEY`, `CAL_EVENT_TYPE_I
   then get one spurious "cancelled" email.
 - **Cloudflare Workers** is untested. Vercel and plain Node are the supported targets.
 
+### Retention cleanup
+
+The privacy policy (sections 3.5 and 10) and the Muse data questionnaire promise that audit requests and connector
+activity logs are kept 12 months. `GET /cron/retention` enforces that. Vercel Cron calls it daily at 03:17 UTC
+(`vercel.json`), and it deletes:
+
+- `audit_requests` created more than 12 months ago (a request with a call still in the future is kept),
+- `tool_logs` created more than 12 months ago,
+- expired rows in `oauth_used_ids` (replaces the optional pg_cron job in `supabase/schema.sql`).
+
+To turn it on, add `CRON_SECRET` to Vercel (Production, Sensitive, any random 32+ character string) and redeploy.
+Vercel sends it as `Authorization: Bearer ...` on each run; without it the endpoint answers 503 and nothing runs. The job
+logs only counts. If a run fails, the team gets a "Retention cleanup failed" email. Cron jobs run on production
+deployments only, and the Hobby plan allows one run per day.
+
+The periods live in `RETENTION_MONTHS` in `src/retention.ts`. Change the policy text first, then the numbers. Calendar
+and booking records held by Cal.com and Google follow those providers' own retention, as the policy says.
+
 ## Open copy decisions for Ruchi
 
 Descriptions are verbatim from the brief. Two additions are worth considering because Muse matches on this text:
@@ -197,7 +216,7 @@ The region lists (`src/region.ts`) decide which leads get the `LOCAL` tag in Sla
 
 ```
 npm install
-npm test            # 130 tests, no network needed
+npm test            # no network needed
 npm run typecheck
 npm run dev         # needs real credentials; use the tests for offline work
 ```

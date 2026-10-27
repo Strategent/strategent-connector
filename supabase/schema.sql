@@ -58,5 +58,6 @@ alter table audit_requests enable row level security;
 alter table tool_logs enable row level security;
 alter table oauth_used_ids enable row level security;
 
--- Optional housekeeping: delete expired code ids daily (needs the pg_cron extension).
+-- Optional: the connector's daily retention job (GET /cron/retention) already removes expired code ids. This pg_cron
+-- version is only needed if you run without that job.
 -- select cron.schedule('oauth-used-ids-cleanup', '17 3 * * *', $$delete from oauth_used_ids where expires_at < now()$$);

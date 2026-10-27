@@ -14,6 +14,8 @@ export interface Config {
   bookingPageUrl: string;
   /** Shared secret Cal.com signs webhook deliveries with. Blank turns the webhook endpoint off. */
   calWebhookSecret: string;
+  /** Bearer secret for the scheduled retention job. Vercel Cron sends it as CRON_SECRET. Blank turns the job off. */
+  cronSecret: string;
   supabaseUrl: string;
   supabaseServiceKey: string;
   slackWebhookUrl: string;
@@ -70,6 +72,7 @@ export function loadConfig(env: Env): Config {
     cancelUrlTemplate: env.CANCEL_URL_TEMPLATE ?? 'https://cal.com/booking/{uid}?cancel=true',
     bookingPageUrl: (env.BOOKING_PAGE_URL ?? '').replace(/^https?:\/\//, '').replace(/\/+$/, ''),
     calWebhookSecret: env.CAL_WEBHOOK_SECRET ?? '',
+    cronSecret: env.CRON_SECRET ?? '',
     supabaseUrl: (env.SUPABASE_URL ?? '').replace(/\/+$/, ''),
     supabaseServiceKey: env.SUPABASE_SERVICE_KEY ?? '',
     slackWebhookUrl: env.SLACK_WEBHOOK_URL ?? '',

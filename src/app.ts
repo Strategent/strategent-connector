@@ -9,6 +9,7 @@ import { docsPage } from './docs.js';
 import { createMcpServer } from './mcp.js';
 import { createNotifier, type Notifier } from './notify.js';
 import { authenticate, createOAuthRoutes, unauthorizedResponse } from './oauth.js';
+import { createRetentionRoutes } from './retention.js';
 import type { SchedulerApi } from './scheduler.js';
 import { SupabaseStore, type Store } from './store.js';
 
@@ -33,6 +34,7 @@ export function createApp(deps: AppDeps): Hono {
 
   app.route('/', createOAuthRoutes({ config, store: deps.store, now }));
   app.route('/', createCalWebhookRoutes({ config, store: deps.store, notifier: deps.notifier }));
+  app.route('/', createRetentionRoutes({ config, store: deps.store, notifier: deps.notifier, now }));
 
   app.use('/mcp', cors({ origin: '*', allowHeaders: ['Authorization', 'Content-Type', 'Accept', 'Mcp-Session-Id', 'Mcp-Protocol-Version'], exposeHeaders: ['WWW-Authenticate', 'Mcp-Session-Id'] }));
   app.use('/mcp', bodyLimit({ maxSize: 64 * 1024, onError: (c) => c.json({ error: 'payload_too_large' }, 413) }));
