@@ -45,6 +45,13 @@ export type RequestPatch = Partial<
 /** Cal.com booking uids are short URL-safe strings. Anything else is never looked up. */
 export const isBookingUid = (uid: string) => /^[A-Za-z0-9_-]{6,64}$/.test(uid);
 
+/** What a retention run removed. Counts only, never row contents. */
+export interface PurgeResult {
+  audit_requests: number;
+  tool_logs: number;
+  oauth_used_ids: number;
+}
+
 export interface Store {
   insertRequest(row: Omit<AuditRequest, 'id' | 'created_at'>): Promise<AuditRequest>;
   /** The request that holds this Cal.com booking uid, whatever its status. */
@@ -63,6 +70,16 @@ export interface Store {
   /** True the first time an id is seen, false after. Used to make OAuth codes single-use. */
   claimOnce(id: string, ttlSeconds: number): Promise<boolean>;
   log(entry: ToolLog): Promise<void>;
+  /**
+   * Deletes audit requests created before `requestsBefore`, tool logs created before `logsBefore`, and OAuth code ids
+   * that have expired. A request with a call still in the future is kept. Every delete is filtered by date, so a
+   * bad cutoff cannot widen it past what the caller asked for.
+   */
+  purge(cutoffs: { requestsBefore: Date; logsBefore: Date; now: Date }): Promise<PurgeResult>;
+}
+
+function assertDate(name: string, d: Date) {
+  if (!(d instanceof Date) || Number.isNaN(d.getTime())) throw new Error(`purge: ${name} is not a valid date`);
 }
 
 const norm = (e: string) => e.trim().toLowerCase();
@@ -70,7 +87,8 @@ const norm = (e: string) => e.trim().toLowerCase();
 export class MemoryStore implements Store {
   rows: AuditRequest[] = [];
   logs: ToolLog[] = [];
-  private claimed = new Set<string>();
+  private logAt: number[] = [];
+  private claimed = new Map<string, number>();
   constructor(private now: () => Date = () => new Date()) {}
 
   async insertRequest(row: Omit<AuditRequest, 'id' | 'created_at'>) {
@@ -127,13 +145,32 @@ export class MemoryStore implements Store {
   async countOpenWritten() {
     return this.rows.filter((r) => r.type === 'written' && r.status === 'requested').length;
   }
-  async claimOnce(id: string) {
+  async claimOnce(id: string, ttlSeconds = 600) {
     if (this.claimed.has(id)) return false;
-    this.claimed.add(id);
+    this.claimed.set(id, this.now().getTime() + ttlSeconds * 1000);
     return true;
   }
   async log(entry: ToolLog) {
     this.logs.push(entry);
+    this.logAt.push(this.now().getTime());
+  }
+  async purge(c: { requestsBefore: Date; logsBefore: Date; now: Date }) {
+    assertDate('requestsBefore', c.requestsBefore);
+    assertDate('logsBefore', c.logsBefore);
+    assertDate('now', c.now);
+    const before = { requests: this.rows.length, logs: this.logs.length, ids: this.claimed.size };
+    this.rows = this.rows.filter(
+      (r) => !(new Date(r.created_at) < c.requestsBefore && !(r.slot_start && new Date(r.slot_start) >= c.now)),
+    );
+    const keep = this.logAt.map((t) => t >= c.logsBefore.getTime());
+    this.logs = this.logs.filter((_, i) => keep[i]);
+    this.logAt = this.logAt.filter((_, i) => keep[i]);
+    for (const [id, exp] of this.claimed) if (exp < c.now.getTime()) this.claimed.delete(id);
+    return {
+      audit_requests: before.requests - this.rows.length,
+      tool_logs: before.logs - this.logs.length,
+      oauth_used_ids: before.ids - this.claimed.size,
+    };
   }
 }
 
@@ -255,6 +292,44 @@ export class SupabaseStore implements Store {
 
   async log(entry: ToolLog) {
     await this.rest('tool_logs', { method: 'POST', headers: { Prefer: 'return=minimal' }, body: JSON.stringify(entry) });
+  }
+
+  /** Deletes the rows matching `filter` and returns how many went. Only ids come back, never row contents. */
+  private async deleteWhere(table: string, filter: URLSearchParams): Promise<number> {
+    filter.set('select', 'id');
+    const res = await this.rest(`${table}?${filter}`, { method: 'DELETE', headers: { Prefer: 'return=representation' } });
+    if (!res.ok) throw new Error(`Supabase delete from ${table} failed (${res.status})`);
+    return ((await res.json()) as unknown[]).length;
+  }
+
+  async purge(c: { requestsBefore: Date; logsBefore: Date; now: Date }) {
+    assertDate('requestsBefore', c.requestsBefore);
+    assertDate('logsBefore', c.logsBefore);
+    assertDate('now', c.now);
+    const jobs = {
+      audit_requests: () =>
+        this.deleteWhere(
+          'audit_requests',
+          new URLSearchParams({
+            created_at: `lt.${c.requestsBefore.toISOString()}`,
+            or: `(slot_start.is.null,slot_start.lt.${c.now.toISOString()})`,
+          }),
+        ),
+      tool_logs: () => this.deleteWhere('tool_logs', new URLSearchParams({ created_at: `lt.${c.logsBefore.toISOString()}` })),
+      oauth_used_ids: () => this.deleteWhere('oauth_used_ids', new URLSearchParams({ expires_at: `lt.${c.now.toISOString()}` })),
+    };
+    // One table failing must not stop the others from being cleaned.
+    const result: PurgeResult = { audit_requests: 0, tool_logs: 0, oauth_used_ids: 0 };
+    const failures: string[] = [];
+    for (const [name, run] of Object.entries(jobs)) {
+      try {
+        result[name as keyof PurgeResult] = await run();
+      } catch (e) {
+        failures.push((e as Error).message);
+      }
+    }
+    if (failures.length) throw new Error(failures.join('; '));
+    return result;
   }
 }
 
